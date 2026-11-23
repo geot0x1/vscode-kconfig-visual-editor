@@ -22,7 +22,7 @@ const ROW_ID_ATTRIBUTE = "data-row-id";
 export interface SectionNavigationDeps {
   rows: Ref<DisplayRow[]>;
   scrollContainer: Ref<HTMLElement | null>;
-  expandMenu: (id: string) => void;
+  expandMenu: (id: string) => void; // eslint-disable-line no-unused-vars
 }
 
 export function useSectionNavigation(deps: SectionNavigationDeps) {
@@ -52,7 +52,7 @@ export function useSectionNavigation(deps: SectionNavigationDeps) {
     }
     frameHandle = requestAnimationFrame(() => {
       frameHandle = 0;
-      activeId.value = findActiveSectionId(deps.scrollContainer.value, navEntries.value) || activeId.value;
+      activeId.value = findActiveSectionId(deps.scrollContainer.value, navEntries.value);
     });
   }
 
@@ -69,7 +69,7 @@ export function useSectionNavigation(deps: SectionNavigationDeps) {
   return { activeId, navEntries, navigateTo };
 }
 
-function buildNavEntries(rows: DisplayRow[]): NavEntry[] {
+export function buildNavEntries(rows: DisplayRow[]): NavEntry[] {
   return rows
     .filter((row) => row.type === "menu" && row.level <= MAX_NAV_DEPTH)
     .map((row) => ({

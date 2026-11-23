@@ -52,7 +52,7 @@ export async function runRtThreadPkgsDirTests(): Promise<void> {
     const pkgsDirConfig = packageJson?.contributes?.configuration?.properties?.["kconfig.rtThread.pkgsDir"];
     assert.strictEqual(
         pkgsDirConfig?.default,
-        path.join("~", ".env", "packages"),
+        "~/.env/packages",
         "pkgs dir default should be ~/.env/packages"
     );
     assert.strictEqual(
@@ -71,12 +71,9 @@ export async function runRtThreadPkgsDirTests(): Promise<void> {
         "pickAutoPkgsDir should be exported for tests"
     );
 
-    const originalEnv = {
-        HOME: process.env.HOME,
-        PKGS_DIR: process.env.PKGS_DIR,
-        PKGS_ROOT: process.env.PKGS_ROOT,
-        ENV_ROOT: process.env.ENV_ROOT,
-    };
+    // os.homedir() reads HOME on POSIX and USERPROFILE on Windows, so fake both.
+    const envKeys = ["HOME", "USERPROFILE", "PKGS_DIR", "PKGS_ROOT", "ENV_ROOT"];
+    const originalEnv = new Map(envKeys.map((key) => [key, process.env[key]]));
 
     const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "kconfig-home-"));
     const expectedDefault = path.join(tempHome, ".env", "packages");
@@ -84,6 +81,7 @@ export async function runRtThreadPkgsDirTests(): Promise<void> {
 
     try {
         process.env.HOME = tempHome;
+        process.env.USERPROFILE = tempHome;
         delete process.env.PKGS_DIR;
         delete process.env.PKGS_ROOT;
         delete process.env.ENV_ROOT;
@@ -96,10 +94,17 @@ export async function runRtThreadPkgsDirTests(): Promise<void> {
         assert.strictEqual(result?.path, expectedDefault);
         assert.strictEqual(result?.source, "default");
     } finally {
-        process.env.HOME = originalEnv.HOME;
-        process.env.PKGS_DIR = originalEnv.PKGS_DIR;
-        process.env.PKGS_ROOT = originalEnv.PKGS_ROOT;
-        process.env.ENV_ROOT = originalEnv.ENV_ROOT;
+        restoreEnv(originalEnv);
         fs.rmSync(tempHome, { recursive: true, force: true });
     }
+}
+
+function restoreEnv(original: Map<string, string | undefined>): void {
+    original.forEach((value, key) => {
+        if (value === undefined) {
+            delete process.env[key];
+            return;
+        }
+        process.env[key] = value;
+    });
 }

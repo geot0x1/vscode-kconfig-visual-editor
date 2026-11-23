@@ -14,6 +14,8 @@ import { runStartupProfilerTests } from "./startupProfiler.test";
 import { runWebviewStoreInitialChunksTests } from "./webviewStoreInitialChunks.test";
 import { runCommentRenderingTests } from "./commentRendering.test";
 import { runUnsavedCloseFlowTests } from "./unsavedCloseFlow.test";
+import { runLauncherAutoOpenTests } from "./launcherAutoOpen.test";
+import { runSectionNavigationTests } from "./sectionNavigation.test";
 
 async function main(): Promise<void> {
     await runRtThreadPkgsDirTests();
@@ -32,6 +34,8 @@ async function main(): Promise<void> {
     await runWebviewStoreInitialChunksTests();
     await runCommentRenderingTests();
     await runUnsavedCloseFlowTests();
+    await runLauncherAutoOpenTests();
+    await runSectionNavigationTests();
 }
 
 main().catch((error) => {
