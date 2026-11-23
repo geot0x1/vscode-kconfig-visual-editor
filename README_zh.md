@@ -6,15 +6,15 @@ VSCode Kconfig 可视化编辑器，提供语法高亮、自动补全、验证�
 
 ![Kconfig Visual Editor](images/kconfig-visual-editor.png)
 
-支持 2 套渲染 UI 风格，可在设置中切换：
+支持 2 套 UI 风格，可通过 `kconfig.uiTheme` 设置切换：
 
-1. 经典 menuconfig 风格
-
-![default](images/default.png)
-
-2. 表格式配置编辑器
+1. **现代风格**（默认）：左侧分类侧边栏 + 设置页式的配置项列表
 
 ![modern](images/modern.png)
+
+2. **经典风格**：menuconfig 风格的树形导航（`"kconfig.uiTheme": "default"`）
+
+![default](images/default.png)
 
 
 ## 功能特性
@@ -86,11 +86,13 @@ VSCode Kconfig 可视化编辑器，提供语法高亮、自动补全、验证�
 
 ### 可视化配置编辑器
 
-- 交互式 menuconfig 风格界面
-- 搜索和过滤配置选项
+- 分类侧边栏，可跳转到任意菜单，并高亮当前浏览的分类
+- 每个配置项显示提示文本、`CONFIG_` 符号名和类型标签
+- 针对不同类型的控件：bool 使用开关，tristate 使用 `N / M / Y` 按钮，int 和 hex 使用 `−`/`+` 步进输入框，choice 使用下拉菜单
+- 内联帮助面板，显示帮助文本、依赖、菜单路径和源文件位置
+- 按提示文本或符号名搜索（可带或不带 `CONFIG_` 前缀），并实时显示结果数量
 - 实时依赖关系解析和验证
-- 支持所有 Kconfig 类型（bool、tristate、string、int、hex、choice）
-- 可折叠的菜单树，便于导航
+- 跟随 VS Code 颜色主题（浅色或深色）
 - 保存、丢弃和重置配置更改
 - 多语言支持（中文和英文）
 
@@ -133,6 +135,8 @@ VSCode Kconfig 可视化编辑器，提供语法高亮、自动补全、验证�
 
 - `kconfig.enableValidation`: 启用/禁用 Kconfig 文件的语法验证（默认：`true`）
 - `kconfig.autoHeaderPath`: 生成的 C 头文件保存路径。支持绝对路径或相对于 .config 所在目录的路径（默认：`config.h`）
+- `kconfig.uiTheme`: 可视化编辑器的 UI 风格，`modern`（现代）或 `default`（经典）（默认：`modern`）
+- `kconfig.rtThread.pkgsDir`: 用于解析 RT-Thread 软件包的 `PKGS_DIR` 路径，可自动检测（默认：`~/.env/packages`）
 
 
 ## 使用方法
@@ -142,11 +146,15 @@ VSCode Kconfig 可视化编辑器，提供语法高亮、自动补全、验证�
 1. 右键点击任何 Kconfig 文件
 2. 选择 "打开 Kconfig 可视化编辑器"
 3. 或者在编辑器标题栏点击配置图标
+4. 或者点击活动栏中的 **Kconfig** 图标，或在命令面板中运行 **Kconfig: 打开工作区根目录的 Kconfig**，打开工作区根目录下的 `Kconfig`
 
 ### 编辑配置
 
-- 使用搜索框快速查找配置项
-- 点击复选框、输入框或下拉菜单修改配置值
+- 点击左侧边栏中的分类即可跳转；点击菜单标题可展开或折叠
+- 按 `/` 聚焦搜索框，按 `Esc` 清除搜索
+- 使用开关、`N / M / Y` 按钮、步进输入框、文本框和下拉菜单修改配置值
+- 将鼠标悬停在配置项上并点击 ⓘ 按钮，查看帮助和详细信息
+- 使用列表上方的工具栏展开全部菜单、折叠全部菜单或关闭所有帮助面板
 - 点击 "Save" 保存更改
 - 点击 "Discard" 丢弃未保存的更改
 - 点击 "Reset" 重置所有配置为默认值
@@ -169,8 +177,10 @@ VSCode Kconfig 可视化编辑器，提供语法高亮、自动补全、验证�
 
 4. 在 VSCode 中安装生成的 `.vsix` 文件：
    ```bash
-    code --install-extension vscode-kconfig-visual-editor-<version>.vsix
+    code --install-extension kconfig-visual-editor-<version>.vsix
    ```
+
+   或运行 `scripts/reinstall.sh` 一步完成打包和安装。
 
 ## 版本更新记录
 
@@ -185,6 +195,11 @@ VSCode Kconfig 可视化编辑器，提供语法高亮、自动补全、验证�
 4. 0.3.0:
    - 优化加载速度，提升大型工程加载显示速度，支持 RT-Thread 大型工程
    - 修复部分 Kconfig 语法兼容性问题
+
+5. 0.5.0:
+   - 重新设计现代 UI：分类侧边栏导航、设置页式配置项列表、`N / M / Y` tristate 按钮、内联帮助面板，配色跟随 VS Code 主题
+   - 现代 UI 成为默认界面（将 `kconfig.uiTheme` 设为 `default` 可使用经典界面）
+   - 新增 Kconfig 活动栏视图和 "打开工作区根目录的 Kconfig" 命令
 
 ## 测试与验证
 
