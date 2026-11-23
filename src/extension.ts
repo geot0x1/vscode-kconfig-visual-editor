@@ -20,6 +20,7 @@ import { MenuconfigPanel } from './menuconfig/MenuconfigPanel';
 import { KconfigServer } from './menuconfig/KconfigServer';
 import { FileWatcher } from './menuconfig/fileWatcher';
 import { Logger } from './logger/logger';
+import { find_root_kconfig, register_launcher_view } from './menuconfig/WorkspaceKconfigLauncher';
 
 export function activate(context: vscode.ExtensionContext) {
     Logger.info('Kconfig-editor extension is now active');
@@ -72,6 +73,19 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
+    const openWorkspaceRootCommand = vscode.commands.registerCommand('kconfig.menuconfig.openWorkspaceRoot', async () => {
+        const root_kconfig = await find_root_kconfig();
+        if (!root_kconfig) {
+            vscode.window.showWarningMessage('No Kconfig file found in the workspace root folder.');
+            return;
+        }
+
+        try {
+            MenuconfigPanel.createOrShow(context.extensionUri, root_kconfig.folder.uri, root_kconfig.file);
+        } catch (error: any) {
+            vscode.window.showErrorMessage(`Failed to open Kconfig visual editor: ${error.message}`);
+        }
+    });
 
     // Command for saving default configuration
     const saveDefconfigCommand = vscode.commands.registerCommand('kconfig.saveDefconfig', async () => {
@@ -108,6 +122,8 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(helloWorldCommand);
     context.subscriptions.push(menuconfigCommand);
     context.subscriptions.push(saveDefconfigCommand);
+    context.subscriptions.push(openWorkspaceRootCommand);
+    context.subscriptions.push(register_launcher_view('kconfig.menuconfig.openWorkspaceRoot'));
 
     // Initialize file watcher for sdkconfig files
     const fileWatcher = new FileWatcher(context);

@@ -2,7 +2,7 @@
   "name": "kconfig-visual-editor",
   "displayName": "%displayName%",
   "description": "%description%",
-  "version": "0.4.0",
+  "version": "0.4.4",
   "license": "Apache-2.0",
   "publisher": "flyingcys",
   "icon": "resources/icons/install-complete.png",
@@ -33,7 +33,9 @@
   ],
   "activationEvents": [
     "onLanguage:kconfig",
-    "onCommand:kconfig.menuconfig.start"
+    "onCommand:kconfig.menuconfig.start",
+    "onCommand:kconfig.menuconfig.openWorkspaceRoot",
+    "onView:kconfig.launcherView"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -83,6 +85,15 @@
         "command": "kconfig.saveDefconfig",
         "title": "%command.saveDefconfig%",
         "category": "Kconfig"
+      },
+      {
+        "command": "kconfig.menuconfig.openWorkspaceRoot",
+        "title": "%command.menuconfig.openWorkspaceRoot%",
+        "category": "Kconfig",
+        "icon": {
+          "light": "resources/icons/light/config.svg",
+          "dark": "resources/icons/dark/config.svg"
+        }
       }
     ],
     "menus": {
@@ -128,7 +139,10 @@
           "scope": "window",
           "type": "string",
           "default": "default",
-          "enum": ["default", "modern"],
+          "enum": [
+            "default",
+            "modern"
+          ],
           "enumDescriptions": [
             "%config.uiTheme.default%",
             "%config.uiTheme.modern%"
@@ -158,7 +172,30 @@
           "description": "Slow startup threshold in milliseconds for automatic startup metric emission."
         }
       }
-    }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "kconfig",
+          "title": "%view.container.title%",
+          "icon": "resources/icons/dark/config.svg"
+        }
+      ]
+    },
+    "views": {
+      "kconfig": [
+        {
+          "id": "kconfig.launcherView",
+          "name": "%view.launcher.name%"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "kconfig.launcherView",
+        "contents": "%view.launcher.welcome%"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "webpack --mode production",

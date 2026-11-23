@@ -1,30 +1,28 @@
 {
   "displayName": "Kconfig Visual Editor",
   "description": "Visual editor for Kconfig files with syntax highlighting, auto-completion, validation and menuconfig interface",
-
   "command.menuconfig.start": "Open Kconfig Visual Editor",
   "command.saveDefconfig": "Save Default Configuration",
-
   "configuration.title": "Kconfig Visual Editor",
-
   "config.enableValidation": "Enable syntax validation for Kconfig files",
   "config.autoHeaderPath": "Path to write the generated C header file (default: config.h in the same directory as .config). Supports absolute paths or paths relative to .config directory",
   "config.uiTheme": "Select the UI theme used by the menuconfig webview",
   "config.uiTheme.default": "Default tree navigation interface",
   "config.uiTheme.modern": "Modern table layout",
-
   "config.debug.title": "Debug",
   "config.debug.enabled": "Enable debug mode to show detailed logs in the output panel",
   "config.debug.menu": "Enable menu-specific debug logging for troubleshooting menu loading issues",
-
   "config.log.title": "Logging",
   "config.log.enabled": "Enable general logging for Kconfig operations",
   "config.log.level": "Set the logging level (debug, info, warning, error)",
   "config.log.outputChannel": "Show logs in VS Code output panel",
-
   "config.validation.title": "Validation",
   "config.validation.checkSymbolReferences": "Verify that symbol references are valid",
   "config.validation.checkDependencies": "Validate configuration dependencies",
   "config.validation.warnUnusedSymbols": "Show warnings for unused symbols",
-  "config.rtThread.pkgsDir": "### RT-Thread\nConfigure the `PKGS_DIR` path used to resolve RT-Thread packages. The extension auto-detects common locations and updates this field with the detected value when possible."
+  "config.rtThread.pkgsDir": "### RT-Thread\nConfigure the `PKGS_DIR` path used to resolve RT-Thread packages. The extension auto-detects common locations and updates this field with the detected value when possible.",
+  "command.menuconfig.openWorkspaceRoot": "Open Kconfig from Workspace Root",
+  "view.container.title": "Kconfig",
+  "view.launcher.name": "Kconfig Editor",
+  "view.launcher.welcome": "Opens the Kconfig found in the workspace root.\n[Open Kconfig Visual Editor](command:kconfig.menuconfig.openWorkspaceRoot)"
 }
