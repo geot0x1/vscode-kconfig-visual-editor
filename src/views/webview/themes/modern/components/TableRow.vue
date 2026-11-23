@@ -18,6 +18,12 @@ import { storeToRefs } from "pinia";
 import { useMenuconfigStore } from "../../../store";
 import type { DisplayRow } from "../types";
 import type { Menu } from "../../../../../menuconfig/Menu";
+import { IconChevronRight, IconInfo, IconLock } from "@iconify-prerendered/vue-codicon";
+import ToggleSwitch from "./ToggleSwitch.vue";
+import SegmentedControl from "./SegmentedControl.vue";
+import StepperInput from "./StepperInput.vue";
+import HelpPanel from "./HelpPanel.vue";
+import { t } from "../../../i18n";
 
 const props = defineProps<{
   row: DisplayRow;
@@ -66,9 +72,10 @@ const allowedTriOptions = computed<TriValue[]>(() => {
   return ["n", "m", "y"];
 });
 
-const triSelectOptions = computed<Array<{ value: TriValue; disabled: boolean }>>(() =>
+const triSelectOptions = computed(() =>
   (["n", "m", "y"] as TriValue[]).map((option) => ({
     value: option,
+    label: option,
     disabled: !allowedTriOptions.value.includes(option),
   }))
 );
@@ -82,12 +89,33 @@ const readonlyReason = computed(() => props.row.item.readonlyReason || "");
 
 const propertyLabel = computed(() => props.row.item.title || props.row.item.name || props.row.id);
 
-const indentStyle = computed(() => ({
-  paddingLeft: `${props.row.level * 20 + (isMenuRow.value ? 4 : 28)}px`,
-}));
+const INDENT_PX = 18;
+const ROW_BASE_PADDING_PX = 20;
 
-const helpIndentStyle = computed(() => ({
-  paddingLeft: `${props.row.level * 20 + 32}px`,
+const symbolName = computed(() => {
+  const name = props.row.item.name;
+  if (!name || name === propertyLabel.value) {
+    return "";
+  }
+  return `CONFIG_${name}`;
+});
+
+const isSectionRow = computed(() => isMenuRow.value && props.row.level === 0);
+
+const typeBadge = computed(() => {
+  const labels: Partial<Record<string, string>> = {
+    int: "int",
+    hex: "hex",
+    string: "str",
+    tristate: "tri",
+    choice: "choice",
+  };
+  return labels[props.row.type] || "";
+});
+
+const indentStyle = computed(() => ({
+  paddingLeft: `${ROW_BASE_PADDING_PX + props.row.level * INDENT_PX}px`,
+  "--guide-width": `${props.row.level * INDENT_PX}px`,
 }));
 
 const hasHelp = computed(() => {
@@ -128,13 +156,6 @@ watch(
     updateCollapseState(value, { emit: false });
   }
 );
-
-const expandIcon = computed(() => {
-  if (!canToggleMenu.value) {
-    return "▶";
-  }
-  return collapsed.value ? "▶" : "▼";
-});
 
 const boolValue = ref(toBoolean(props.row.item.value));
 watch(
@@ -305,7 +326,7 @@ function onPropertyContentClick(event: MouseEvent) {
   }
 
   const target = event.target as HTMLElement | null;
-  if (target?.closest(".expand-icon, .help-icon, .toggle-switch")) {
+  if (target?.closest("button, input, select, label")) {
     return;
   }
 
@@ -313,41 +334,29 @@ function onPropertyContentClick(event: MouseEvent) {
   toggleMenu();
 }
 
-function onMenuConfigToggle(event: Event) {
+function onMenuConfigToggle(value: boolean) {
   if (isReadonly.value) {
-    (event.target as HTMLInputElement).checked = boolValue.value;
     return;
   }
-
-  const value = (event.target as HTMLInputElement).checked;
   boolValue.value = value;
   updateValue(value);
-
-  if (value) {
-    updateCollapseState(false);
-  } else {
-    updateCollapseState(true);
-  }
+  updateCollapseState(!value);
 }
 
-function onBooleanToggle(event: Event) {
+function onBooleanToggle(value: boolean) {
   if (isReadonly.value) {
-    (event.target as HTMLInputElement).checked = boolValue.value;
     return;
   }
-  const value = (event.target as HTMLInputElement).checked;
   boolValue.value = value;
   updateValue(value);
 }
 
-function onTriValueChange(event: Event) {
+function onTriValueSelect(selected: string) {
   if (isTriSelectDisabled.value) {
-    event.preventDefault();
     triValue.value = ensureTriValueAllowed(normalizeTriValue(props.row.item.value));
     return;
   }
-  const target = event.target as HTMLSelectElement;
-  const next = ensureTriValueAllowed(normalizeTriValue(target.value));
+  const next = ensureTriValueAllowed(normalizeTriValue(selected));
   const current = ensureTriValueAllowed(normalizeTriValue(props.row.item.value));
   if (next !== triValue.value) {
     triValue.value = next;
@@ -599,283 +608,206 @@ function toNumericHex(value: string): number {
 
 <template>
   <div
-    class="table-row"
-    :class="[
-      { 'menu-row': isMenuRow, 'comment-row': isCommentRow, readonly: isReadonly },
-      { collapsed }
-    ]"
+    class="row"
+    :data-row-id="props.row.id"
+    :class="{
+      'menu-row': isMenuRow,
+      'section-row': isSectionRow,
+      'comment-row': isCommentRow,
+      readonly: isReadonly,
+      collapsed,
+      'help-open': helpVisible && hasHelp,
+    }"
     v-show="!hidden"
   >
-    <template v-if="isCommentRow">
-      <div class="table-cell comment-full-col">
-        <div class="comment-content" :style="indentStyle">
-          <span class="comment-stars">***</span>
-          <span class="comment-text">{{ props.row.item.title || props.row.item.prompt }}</span>
-          <span class="comment-stars">***</span>
-        </div>
+    <div v-if="isCommentRow" class="row-inner" :style="indentStyle">
+      <div class="comment-content">
+        <span class="comment-rule" />
+        <span class="comment-text">{{ props.row.item.title || props.row.item.prompt }}</span>
+        <span class="comment-rule" />
       </div>
-    </template>
-    <template v-else>
-      <div class="table-cell property-col">
-        <div
-          class="property-content"
-          :class="{ 'menu-clickable': isMenuRow }"
-          :style="indentStyle"
-          @click="onPropertyContentClick"
-        >
+    </div>
+
+    <div
+      v-else
+      class="row-inner"
+      :class="{ clickable: canToggleMenu }"
+      :style="indentStyle"
+      @click="onPropertyContentClick"
+    >
+      <div class="row-main">
+        <div class="row-title-line">
           <button
             v-if="isMenuRow"
-            class="expand-icon"
+            class="chevron"
+            :class="{ open: canToggleMenu && !collapsed }"
             type="button"
             :aria-expanded="canToggleMenu ? !collapsed : undefined"
+            :aria-label="collapsed ? t('menu.expand') : t('menu.collapse')"
             :disabled="!canToggleMenu"
             @click.stop="toggleMenu"
           >
-            {{ expandIcon }}
+            <IconChevronRight />
           </button>
-          <span class="property-name">{{ propertyLabel }}</span>
-          <span v-if="isReadonly" class="readonly-tag" :title="readonlyReason">LOCK</span>
-          <button v-if="hasHelp" class="help-icon" type="button" @click.stop="toggleHelp">?</button>
+          <span class="row-title" :title="propertyLabel">{{ propertyLabel }}</span>
+          <span v-if="isReadonly" class="chip chip-lock" :title="readonlyReason || t('config.readonlyDefault')">
+            <IconLock />
+            <span>{{ t("config.readonly") }}</span>
+          </span>
+          <span v-if="typeBadge" class="chip chip-type">{{ typeBadge }}</span>
         </div>
+        <div v-if="symbolName" class="row-symbol">{{ symbolName }}</div>
       </div>
-      <div class="table-cell value-col">
-        <template v-if="isMenuRow">
-          <label v-if="isMenuConfig" class="toggle-switch">
-            <input
-              type="checkbox"
-              :checked="boolValue"
-              :disabled="isReadonly"
-              @change="onMenuConfigToggle"
-            />
-            <span class="toggle-slider"></span>
-          </label>
-        </template>
-        <template v-else-if="isBoolRow">
-          <label class="toggle-switch">
-            <input
-              type="checkbox"
-              :checked="boolValue"
-              :disabled="isReadonly"
-              @change="onBooleanToggle"
-            />
-            <span class="toggle-slider"></span>
-          </label>
-        </template>
-        <template v-else-if="isTristateRow">
-          <select
-            class="select-input"
+
+      <div class="row-actions">
+        <button
+          v-if="hasHelp"
+          class="info-btn"
+          :class="{ active: helpVisible }"
+          type="button"
+          :title="t('config.showHelp')"
+          :aria-label="t('config.showHelp')"
+          :aria-expanded="helpVisible"
+          @click.stop="toggleHelp"
+        >
+          <IconInfo />
+        </button>
+
+        <div class="control">
+          <ToggleSwitch
+            v-if="isMenuRow && isMenuConfig"
+            :checked="boolValue"
+            :disabled="isReadonly"
+            :label="propertyLabel"
+            @change="onMenuConfigToggle"
+          />
+          <ToggleSwitch
+            v-else-if="isBoolRow"
+            :checked="boolValue"
+            :disabled="isReadonly"
+            :label="propertyLabel"
+            @change="onBooleanToggle"
+          />
+          <SegmentedControl
+            v-else-if="isTristateRow"
             :value="triValue"
+            :options="triSelectOptions"
             :disabled="isTriSelectDisabled"
-            @change="onTriValueChange"
-          >
-            <option
-              v-for="option in triSelectOptions"
-              :key="option.value"
-              :value="option.value"
-              :disabled="option.disabled"
-            >
-              {{ option.value }}
-            </option>
-          </select>
-        </template>
-        <template v-else-if="isIntRow">
-          <div class="number-input-wrapper">
-            <input
-              class="text-input number-input"
-              type="number"
-              :min="rangeMin"
-              :max="rangeMax"
-              :value="numberValue"
-              :disabled="isReadonly"
-              @change="onNumberCommit($event)"
-              @blur="onNumberCommit($event)"
-              @keydown.enter.prevent="onNumberCommit($event)"
-            />
-            <div class="number-arrows">
-              <button type="button" @click="onNumberStep(1)" :disabled="isReadonly">▲</button>
-              <button type="button" @click="onNumberStep(-1)" :disabled="isReadonly">▼</button>
-            </div>
-          </div>
-        </template>
-        <template v-else-if="isHexRow">
-          <div class="hex-input-wrapper">
-            <input
-              class="text-input hex-input"
-              type="text"
-              :value="hexValue"
-              :disabled="isReadonly"
-              @change="onHexCommit($event)"
-              @blur="onHexCommit($event)"
-              @keydown.enter.prevent="onHexCommit($event)"
-            />
-            <div class="number-arrows">
-              <button type="button" @click="onHexStep(1)" :disabled="isReadonly">▲</button>
-              <button type="button" @click="onHexStep(-1)" :disabled="isReadonly">▼</button>
-            </div>
-          </div>
-        </template>
-        <template v-else-if="isStringRow">
+            @select="onTriValueSelect"
+          />
+          <StepperInput
+            v-else-if="isIntRow"
+            input-type="number"
+            :value="numberValue"
+            :min="rangeMin"
+            :max="rangeMax"
+            :disabled="isReadonly"
+            @commit="onNumberCommit"
+            @step="onNumberStep"
+          />
+          <StepperInput
+            v-else-if="isHexRow"
+            input-type="text"
+            :value="hexValue"
+            :disabled="isReadonly"
+            @commit="onHexCommit"
+            @step="onHexStep"
+          />
           <input
-            class="text-input string-input"
+            v-else-if="isStringRow"
+            class="text-input"
             type="text"
+            spellcheck="false"
             :value="stringValue"
             :disabled="isReadonly"
             @input="onStringInput"
             @change="onStringCommit"
             @blur="onStringCommit"
           />
-        </template>
-        <template v-else-if="isChoiceRow">
           <select
-            class="select-input"
+            v-else-if="isChoiceRow"
             ref="choiceSelectRef"
+            class="select-input"
             :value="choiceValue"
             :disabled="isReadonly"
-            @change="onChoiceChange"
             :style="{ width: choiceSelectWidth, maxWidth: '100%' }"
+            @change="onChoiceChange"
           >
-            <option
-              v-for="option in choiceOptions"
-              :key="option.id || option.name"
-              :value="option.name"
-            >
+            <option v-for="option in choiceOptions" :key="option.id || option.name" :value="option.name">
               {{ option.title }}
             </option>
           </select>
-        </template>
-        <template v-else>
-          <span class="plain-value">{{ props.row.item.value }}</span>
-        </template>
+          <span v-else-if="!isMenuRow" class="plain-value">{{ props.row.item.value }}</span>
+        </div>
       </div>
-    </template>
-  </div>
-  <div v-if="helpVisible && hasHelp" class="help-row" :style="helpIndentStyle">
-    <p><strong>Name:</strong> {{ props.row.item.name }}</p>
-    <p v-if="props.row.item.prompt"><strong>Prompt:</strong> {{ props.row.item.prompt }}</p>
-    <p><strong>Type:</strong> {{ props.row.item.type }}</p>
-    <p v-if="props.row.item.directDepExpr"><strong>Depends on:</strong> {{ props.row.item.directDepExpr }}</p>
-    <p v-if="props.row.item.menuPath"><strong>Menu path:</strong> {{ props.row.item.menuPath }}</p>
-    <p v-if="props.row.item.sourceFile && props.row.item.linenr">
-      <strong>Location:</strong> {{ props.row.item.sourceFile }}:{{ props.row.item.linenr }}
-    </p>
-    <div v-if="props.row.item.help" class="help-content" v-html="props.row.item.help"></div>
-    <div v-if="props.row.item.sourceFiles && props.row.item.sourceFiles.length">
-      <strong>Includes:</strong>
-      <ul>
-        <li v-for="(file, index) in props.row.item.sourceFiles" :key="index">{{ file }}</li>
-      </ul>
     </div>
+
+    <Transition name="reveal">
+      <div v-if="helpVisible && hasHelp" class="row-help" :style="indentStyle">
+        <HelpPanel :item="props.row.item" />
+      </div>
+    </Transition>
   </div>
 </template>
 
-<style scoped lang="scss">
-.table-row {
-  display: flex;
-  border-bottom: 1px solid var(--border-color);
-  min-height: 36px;
-  transition: background-color 0.2s ease;
+<style scoped>
+.row {
+  position: relative;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
-.table-row.menu-row {
-  background-color: var(--bg-secondary);
-}
-
-.table-row.comment-row {
-  background-color: var(--bg-secondary);
-}
-
-.table-row.readonly .property-name {
-  color: var(--text-secondary);
-}
-
-.table-row:hover {
-  background-color: var(--bg-hover);
-}
-
-.table-cell {
+.row-inner {
+  position: relative;
   display: flex;
   align-items: center;
-  padding: 8px 12px;
+  gap: 16px;
+  min-height: 48px;
+  padding: 8px 20px;
+  transition: background-color var(--motion-fast);
 }
 
-.table-cell.property-col {
+.row-inner::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 26px;
+  width: var(--guide-width, 0);
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--indent-guide) 0,
+    var(--indent-guide) 1px,
+    transparent 1px,
+    transparent 18px
+  );
+  pointer-events: none;
+}
+
+.row:not(.section-row) .row-inner:hover {
+  background-color: var(--surface-hover);
+}
+
+.row-inner.clickable {
+  cursor: pointer;
+}
+
+.row-main {
   flex: 1;
-  border-right: 1px solid var(--border-color);
-}
-
-.table-cell.value-col {
-  flex: 2;
-  min-width: 160px;
-  padding-left: 20px;
-  justify-content: flex-start;
-}
-
-.table-cell.comment-full-col {
-  flex: 1 1 100%;
-  border-right: none;
-  padding: 8px 0;
-}
-
-.comment-content {
+  min-width: 0;
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  width: 100%;
-  padding-top: 1px;
-  padding-bottom: 1px;
-  padding-right: 16px;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.comment-stars {
-  color: var(--text-secondary);
-  font-family: var(--vscode-editor-font-family, monospace);
-}
-
-.property-content {
+.row-title-line {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
+  min-width: 0;
 }
 
-.property-content.menu-clickable {
-  cursor: pointer;
-}
-
-.property-content.menu-clickable .property-name {
-  cursor: pointer;
-}
-
-.expand-icon {
-  width: 16px;
-  height: 16px;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  transition: color 0.2s ease;
-}
-
-.expand-icon:hover {
-  color: var(--accent-blue);
-}
-
-.expand-icon:disabled {
-  color: var(--text-muted);
-  cursor: default;
-  opacity: 0.5;
-}
-
-.expand-icon:disabled:hover {
-  color: var(--text-muted);
-}
-
-.property-name {
-  flex: 1;
+.row-title {
+  min-width: 0;
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 500;
@@ -884,197 +816,266 @@ function toNumericHex(value: string): number {
   text-overflow: ellipsis;
 }
 
-.help-icon {
-  width: 18px;
-  height: 18px;
-  border: 1px solid var(--border-color);
-  border-radius: 50%;
-  background-color: var(--bg-tertiary);
-  color: var(--text-secondary);
+.row-symbol {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
   font-size: 11px;
-  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: text;
+}
+
+.row.readonly .row-title {
+  color: var(--text-secondary);
+}
+
+.row.menu-row .row-inner {
+  min-height: 42px;
+}
+
+.row.menu-row .row-title {
+  font-weight: 600;
+}
+
+.row.section-row {
+  margin-top: 20px;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.row.section-row:first-child {
+  margin-top: 4px;
+}
+
+.row.section-row .row-inner {
+  min-height: 52px;
+  padding-top: 14px;
+}
+
+.row.section-row .row-title {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.chevron {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  margin-left: -4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s ease;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  transition: transform var(--motion-fast), background-color var(--motion-fast), color var(--motion-fast);
 }
 
-.help-icon:hover {
-  background-color: var(--bg-hover);
+.chevron.open {
+  transform: rotate(90deg);
+}
+
+.chevron:hover:not(:disabled) {
+  background-color: var(--surface-hover);
   color: var(--text-primary);
 }
 
-.readonly-tag {
-  padding: 2px 6px;
-  border-radius: 4px;
-  background-color: var(--bg-hover);
-  color: var(--text-secondary);
-  font-size: 10px;
-  letter-spacing: 0.5px;
+.chevron:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
-.toggle-switch {
-  position: relative;
-  display: inline-block;
-  width: 48px;
-  height: 24px;
-}
-
-.toggle-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.toggle-slider {
-  position: absolute;
-  inset: 0;
-  background-color: var(--bg-tertiary);
-  border-radius: 24px;
-  transition: all 0.3s ease;
-  border: 1px solid var(--border-color);
-}
-
-.toggle-slider::before {
-  position: absolute;
-  content: "";
+.chip {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   height: 18px;
-  width: 18px;
-  left: 3px;
-  top: 50%;
-  transform: translateY(-50%);
-  background-color: #ffffff;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.chip-type {
+  background-color: var(--surface-sunken);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+
+.chip-lock {
+  background-color: var(--warning-soft);
+  color: var(--warning-text);
+}
+
+.row-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: var(--control-column);
+}
+
+.control {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.info-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
   border-radius: 50%;
-  transition: transform 0.3s ease;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--motion-fast), background-color var(--motion-fast), color var(--motion-fast);
 }
 
-.toggle-switch input:checked + .toggle-slider {
-  background-color: var(--accent-blue);
-  border-color: var(--accent-blue);
+.row-inner:hover .info-btn,
+.info-btn:focus-visible,
+.info-btn.active {
+  opacity: 1;
 }
 
-.toggle-switch input:checked + .toggle-slider::before {
-  transform: translate(22px, -50%);
+.info-btn:hover,
+.info-btn.active {
+  background-color: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.text-input,
+.select-input {
+  height: 28px;
+  box-sizing: border-box;
+  border: none;
+  border-radius: var(--radius-sm);
+  background-color: var(--input-bg);
+  box-shadow: inset 0 0 0 1px var(--input-border);
+  color: var(--text-primary);
+  font-size: 12.5px;
+  outline: none;
+  transition: box-shadow var(--motion-fast);
 }
 
 .text-input {
-  background-color: var(--input-bg);
-  border: 1px solid var(--input-border);
-  border-radius: 4px;
-  color: var(--text-primary);
-  padding: 4px 10px;
-  font-size: 13px;
-  min-height: 28px;
-  width: 100%;
-  box-sizing: border-box;
-  outline: none;
+  width: 240px;
+  padding: 0 10px;
+  font-family: var(--font-mono);
 }
 
-.string-input {
-  flex: 0 0 auto;
-  width: 200px;
-  max-width: 280px;
+.select-input {
+  padding: 0 30px 0 10px;
+  appearance: none;
+  cursor: pointer;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 50%, calc(100% - 10px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
 }
 
-.text-input:focus {
-  border-color: var(--input-focus);
+.text-input:hover:not(:disabled),
+.select-input:hover:not(:disabled) {
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+.text-input:focus,
+.select-input:focus {
+  box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft);
 }
 
 .text-input:disabled,
-.select-input:disabled,
-.number-arrows button:disabled {
+.select-input:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.select-input {
-  background-color: var(--input-bg);
-  border: 1px solid var(--input-border);
-  border-radius: 4px;
+.select-input option {
+  background-color: var(--surface-raised);
   color: var(--text-primary);
-  padding: 4px 28px 4px 10px;
-  font-size: 13px;
-  min-height: 28px;
-  outline: none;
-  appearance: none;
-  background-image: linear-gradient(45deg, transparent 50%, var(--text-secondary) 50%), linear-gradient(135deg, var(--text-secondary) 50%, transparent 50%);
-  background-position: calc(100% - 14px) calc(50% - 2px), calc(100% - 8px) calc(50% - 2px);
-  background-size: 6px 6px, 6px 6px;
-  background-repeat: no-repeat;
-}
-
-.number-input-wrapper,
-.hex-input-wrapper {
-  position: relative;
-  width: 140px;
-}
-
-.number-arrows {
-  position: absolute;
-  right: 2px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.number-arrows button {
-  width: 16px;
-  height: 12px;
-  border: none;
-  background-color: var(--bg-tertiary);
-  color: var(--text-secondary);
-  font-size: 10px;
-  cursor: pointer;
-  border-radius: 2px;
-}
-
-.number-arrows button:hover:not(:disabled) {
-  background-color: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.number-input {
-  appearance: textfield;
-  -moz-appearance: textfield;
-  padding-right: 28px;
-}
-
-.number-input::-webkit-outer-spin-button,
-.number-input::-webkit-inner-spin-button {
-  margin: 0;
-  -webkit-appearance: none;
-}
-
-.hex-input {
-  padding-right: 28px;
-}
-
-.help-row {
-  background-color: var(--bg-tertiary);
-  border-left: 2px solid var(--accent-blue);
-  margin: 0;
-  padding: 12px 16px;
-  color: var(--text-primary);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.help-row ul {
-  margin: 4px 0 0 18px;
-  padding: 0;
-}
-
-.comment-text {
-  color: var(--text-secondary);
-  font-style: normal;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  font-family: var(--vscode-editor-font-family, monospace);
 }
 
 .plain-value {
-  color: var(--text-primary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.comment-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.comment-rule {
+  flex: 1;
+  height: 1px;
+  background-color: var(--border-subtle);
+}
+
+.comment-rule:first-child {
+  flex: 0 0 12px;
+}
+
+.comment-text {
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-style: italic;
+  white-space: pre-wrap;
+}
+
+.row.comment-row .row-inner {
+  min-height: 34px;
+}
+
+.row-help {
+  padding-right: 20px;
+  padding-bottom: 14px;
+}
+
+.reveal-enter-active,
+.reveal-leave-active {
+  transition: opacity var(--motion-fast), transform var(--motion-fast);
+}
+
+.reveal-enter-from,
+.reveal-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+@media (max-width: 640px) {
+  .row-inner {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .row-actions {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .text-input {
+    width: 100%;
+  }
 }
 </style>

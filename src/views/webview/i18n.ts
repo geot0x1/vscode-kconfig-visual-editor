@@ -38,13 +38,33 @@ export interface FrontendI18nKeys {
     'toolbar.expandAll': string;
     'toolbar.collapseAll': string;
     'toolbar.closeAllHelp': string;
+    'search.placeholder': string;
+    'search.clear': string;
+    'search.noResults': string;
+    'search.noResultsHint': string;
+    'search.results': string;
+    'search.shortcut': string;
+    'table.property': string;
+    'table.value': string;
 
     // Menu
+    'nav.title': string;
     'menu.expand': string;
     'menu.collapse': string;
 
     // Config
     'config.readonlyDefault': string;
+    'config.readonly': string;
+    'config.showHelp': string;
+
+    // Help panel
+    'help.name': string;
+    'help.prompt': string;
+    'help.type': string;
+    'help.dependsOn': string;
+    'help.menuPath': string;
+    'help.location': string;
+    'help.includes': string;
 }
 
 // Chinese texts
@@ -62,11 +82,30 @@ const zhCN: FrontendI18nKeys = {
     'toolbar.expandAll': '展开所有菜单',
     'toolbar.collapseAll': '折叠所有菜单',
     'toolbar.closeAllHelp': '关闭所有帮助信息',
+    'search.placeholder': '搜索配置项…',
+    'search.clear': '清除搜索',
+    'search.noResults': '没有匹配的配置项',
+    'search.noResultsHint': '请尝试其他关键字或符号名称',
+    'search.results': '{count} 项结果',
+    'search.shortcut': '按 / 聚焦搜索',
+    'table.property': '属性',
+    'table.value': '值',
 
+    'nav.title': '配置分类',
     'menu.expand': '展开',
     'menu.collapse': '折叠',
 
     'config.readonlyDefault': '此选项已被自动选择',
+    'config.readonly': '只读',
+    'config.showHelp': '显示详细信息',
+
+    'help.name': '符号',
+    'help.prompt': '提示',
+    'help.type': '类型',
+    'help.dependsOn': '依赖',
+    'help.menuPath': '菜单路径',
+    'help.location': '位置',
+    'help.includes': '包含文件',
 };
 
 // English texts
@@ -84,11 +123,30 @@ const enUS: FrontendI18nKeys = {
     'toolbar.expandAll': 'Expand All Menus',
     'toolbar.collapseAll': 'Collapse All Menus',
     'toolbar.closeAllHelp': 'Close All Help',
+    'search.placeholder': 'Search configuration...',
+    'search.clear': 'Clear search',
+    'search.noResults': 'No matching configuration items',
+    'search.noResultsHint': 'Try a different keyword or symbol name',
+    'search.results': '{count} results',
+    'search.shortcut': 'Press / to search',
+    'table.property': 'Property',
+    'table.value': 'Value',
 
+    'nav.title': 'Categories',
     'menu.expand': 'Expand',
     'menu.collapse': 'Collapse',
 
     'config.readonlyDefault': 'This option has been automatically selected',
+    'config.readonly': 'Read-only',
+    'config.showHelp': 'Show details',
+
+    'help.name': 'Symbol',
+    'help.prompt': 'Prompt',
+    'help.type': 'Type',
+    'help.dependsOn': 'Depends on',
+    'help.menuPath': 'Menu path',
+    'help.location': 'Location',
+    'help.includes': 'Includes',
 };
 
 // Language packs mapping

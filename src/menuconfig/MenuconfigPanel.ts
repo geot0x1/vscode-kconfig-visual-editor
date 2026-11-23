@@ -36,6 +36,7 @@ export class MenuconfigPanel {
   private static panelSeq = 0;
   private _disposed = false;
   private static readonly supportedThemes = ["default", "modern"] as const;
+  private static readonly defaultTheme: typeof MenuconfigPanel.supportedThemes[number] = "modern";
   private static readonly initialPayloadChunkSize = 120;
   private static readonly initialPayloadTaskBatchSize = 32;
   private static readonly startupSlowThresholdMs = 1500;
@@ -701,12 +702,12 @@ export class MenuconfigPanel {
   private resolveUiTheme(): string {
     const configured = vscode.workspace
       .getConfiguration("kconfig")
-      .get<string>("uiTheme", MenuconfigPanel.supportedThemes[0]);
+      .get<string>("uiTheme", MenuconfigPanel.defaultTheme);
 
     if (configured && MenuconfigPanel.supportedThemes.includes(configured as typeof MenuconfigPanel.supportedThemes[number])) {
       return configured;
     }
-    return MenuconfigPanel.supportedThemes[0];
+    return MenuconfigPanel.defaultTheme;
   }
 
   private mapColorThemeKind(kind: vscode.ColorThemeKind): WebviewColorTheme {

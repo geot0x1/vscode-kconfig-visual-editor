@@ -13,22 +13,61 @@
 -->
 
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { storeToRefs } from "pinia";
 import { useMenuconfigStore } from "../../store";
 import { Menu, menuType } from "../../../../menuconfig/Menu";
 import TableRow from "./components/TableRow.vue";
 import ConfirmDialog from "./components/ConfirmDialog.vue";
+import SidebarNav from "./components/SidebarNav.vue";
+import { useSectionNavigation } from "./useSectionNavigation";
 import { t } from "../../i18n";
 import type { DisplayRow, RowType } from "./types";
-import { IconChevronDown, IconChevronUp, IconEyeClosed } from "@iconify-prerendered/vue-codicon";
+import {
+  IconChevronDown,
+  IconChevronUp,
+  IconEyeClosed,
+  IconSave,
+  IconTrash,
+  IconRefresh,
+  IconClose,
+  IconSearch,
+  IconSearchStop
+} from "@iconify-prerendered/vue-codicon";
 
 const store = useMenuconfigStore();
 const { textDictionary, colorThemeKind } = storeToRefs(store);
 
+const SEARCH_SHORTCUT_KEY = "/";
+
+const searchInputRef = ref<HTMLInputElement | null>(null);
+const contentScrollRef = ref<HTMLElement | null>(null);
+
 onMounted(() => {
   store.requestInitValues();
+  window.addEventListener("keydown", onGlobalKeydown);
 });
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onGlobalKeydown);
+});
+
+function onGlobalKeydown(event: KeyboardEvent) {
+  if (event.key !== SEARCH_SHORTCUT_KEY || isEditableTarget(event.target)) {
+    return;
+  }
+  event.preventDefault();
+  searchInputRef.value?.focus();
+  searchInputRef.value?.select();
+}
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  const element = target as HTMLElement | null;
+  if (!element) {
+    return false;
+  }
+  return element.isContentEditable || ["INPUT", "SELECT", "TEXTAREA"].includes(element.tagName);
+}
 
 const searchKeyword = computed({
   get: () => store.searchString,
@@ -60,6 +99,37 @@ const displayRows = computed<DisplayRow[]>(() => {
   buildRows(filteredTree.value, 0, [], false, acc, choiceChildNames.value);
   return acc;
 });
+
+const { activeId, navEntries, navigateTo } = useSectionNavigation({
+  rows: displayRows,
+  scrollContainer: contentScrollRef,
+  expandMenu: (id: string) => store.setMenuCollapseById(id, false),
+});
+
+const activeSectionTitle = computed(
+  () => navEntries.value.find((entry) => entry.id === activeId.value)?.title || ""
+);
+
+const optionCount = computed(
+  () => displayRows.value.filter((row) => row.type !== "menu" && row.type !== "comment").length
+);
+
+const resultsLabel = computed(() => t("search.results").replace("{count}", String(optionCount.value)));
+
+const loadProgress = computed(() => {
+  const total = store.initialLoadChunkTotal;
+  if (!store.initialLoadInProgress || total <= 0) {
+    return null;
+  }
+  return Math.min(100, Math.round((store.initialLoadChunkReceived / total) * 100));
+});
+
+const hasSearch = computed(() => searchKeyword.value !== "");
+const showNoResults = computed(() => hasSearch.value && displayRows.value.length === 0);
+
+function clearSearch() {
+  searchKeyword.value = "";
+}
 
 const mainTitle = computed(() => deriveTitle(store.items));
 
@@ -299,78 +369,106 @@ function handleCollapseUpdate(id: string, value: boolean) {
 
 <template>
   <div class="modern-app" :class="themeClass">
-    <header class="modern-header">
-      <div class="header-left">
-        <h1 class="header-title">{{ mainTitle }}</h1>
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <span /><span /><span /><span />
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-title" :title="mainTitle">{{ mainTitle }}</h1>
+          <span class="brand-subtitle">Kconfig</span>
+        </div>
       </div>
-      <div class="header-center">
-        <div class="search-group">
-          <input
-            v-model="searchKeyword"
-            type="text"
-            class="search-input"
-            placeholder="Search configuration..."
-          />
-          <div class="toolbar-divider" />
-          <div class="toolbar-group">
-            <button
-              class="toolbar-button"
-              type="button"
-              @click="store.expandAllMenus"
-              :title="t('toolbar.expandAll')"
-            >
+
+      <div class="search-field">
+        <IconSearch class="search-icon" />
+        <input
+          ref="searchInputRef"
+          v-model="searchKeyword"
+          type="text"
+          class="search-input"
+          spellcheck="false"
+          :placeholder="t('search.placeholder')"
+          :aria-label="t('search.placeholder')"
+          @keydown.esc="clearSearch"
+        />
+        <span v-if="hasSearch" class="search-count">{{ resultsLabel }}</span>
+        <button
+          v-if="hasSearch"
+          class="search-clear"
+          type="button"
+          :title="t('search.clear')"
+          :aria-label="t('search.clear')"
+          @click="clearSearch"
+        >
+          <IconClose />
+        </button>
+        <kbd v-else class="search-kbd" :title="t('search.shortcut')">/</kbd>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn btn-ghost" type="button" :title="textDictionary.reset" @click="store.setDefaultConfig">
+          <IconRefresh />
+          <span class="btn-label">{{ textDictionary.reset }}</span>
+        </button>
+        <button class="btn btn-secondary" type="button" :title="textDictionary.discard" @click="store.resetGuiConfig">
+          <IconTrash />
+          <span class="btn-label">{{ textDictionary.discard }}</span>
+        </button>
+        <button class="btn btn-primary" type="button" :title="textDictionary.save" @click="store.saveGuiConfig">
+          <IconSave />
+          <span class="btn-label">{{ textDictionary.save }}</span>
+        </button>
+      </div>
+
+      <div v-if="loadProgress !== null" class="load-bar" role="progressbar" :aria-valuenow="loadProgress">
+        <span :style="{ width: `${loadProgress}%` }" />
+      </div>
+    </header>
+
+    <div class="app-body">
+      <SidebarNav class="app-sidebar" :entries="navEntries" :active-id="activeId" @navigate="navigateTo" />
+
+      <main class="content">
+        <div class="content-toolbar">
+          <div class="breadcrumb">
+            <span class="breadcrumb-root">{{ t("nav.title") }}</span>
+            <template v-if="activeSectionTitle">
+              <span class="breadcrumb-sep">/</span>
+              <span class="breadcrumb-current">{{ activeSectionTitle }}</span>
+            </template>
+          </div>
+          <div class="icon-group">
+            <button class="icon-btn" type="button" :title="t('toolbar.expandAll')" @click="store.expandAllMenus">
               <IconChevronDown />
             </button>
-            <button
-              class="toolbar-button"
-              type="button"
-              @click="store.collapseAllMenus"
-              :title="t('toolbar.collapseAll')"
-            >
+            <button class="icon-btn" type="button" :title="t('toolbar.collapseAll')" @click="store.collapseAllMenus">
               <IconChevronUp />
             </button>
-            <button
-              class="toolbar-button"
-              type="button"
-              @click="store.closeAllHelp"
-              :title="t('toolbar.closeAllHelp')"
-            >
+            <button class="icon-btn" type="button" :title="t('toolbar.closeAllHelp')" @click="store.closeAllHelp">
               <IconEyeClosed />
             </button>
           </div>
         </div>
-      </div>
-      <div class="header-right">
-        <button class="header-btn primary" type="button" @click="store.saveGuiConfig">
-          <span class="btn-icon">💾</span>
-          <span>{{ textDictionary.save }}</span>
-        </button>
-        <button class="header-btn" type="button" @click="store.resetGuiConfig">
-          <span class="btn-icon">🗑️</span>
-          <span>{{ textDictionary.discard }}</span>
-        </button>
-        <button class="header-btn" type="button" @click="store.setDefaultConfig">
-          <span class="btn-icon">⟲</span>
-          <span>{{ textDictionary.reset }}</span>
-        </button>
-      </div>
-    </header>
 
-    <div class="table-wrapper">
-      <div class="table-header">
-        <div class="table-header-cell property-col">Property</div>
-        <div class="table-header-cell value-col">Value</div>
-      </div>
-      <div class="table-body">
-        <TableRow
-          v-for="row in displayRows"
-          :key="row.id"
-          :row="row"
-          :collapsed="row.collapsed"
-          :hidden="row.hidden"
-          @update-collapse="handleCollapseUpdate"
-        />
-      </div>
+        <div ref="contentScrollRef" class="content-scroll">
+          <div class="content-column">
+            <div v-if="showNoResults" class="empty-state">
+              <div class="empty-icon"><IconSearchStop /></div>
+              <div class="empty-title">{{ t("search.noResults") }}</div>
+              <div class="empty-hint">{{ t("search.noResultsHint") }}</div>
+            </div>
+            <TableRow
+              v-for="row in displayRows"
+              :key="row.id"
+              :row="row"
+              :collapsed="row.collapsed"
+              :hidden="row.hidden"
+              @update-collapse="handleCollapseUpdate"
+            />
+          </div>
+        </div>
+      </main>
     </div>
 
     <ConfirmDialog
@@ -398,227 +496,493 @@ function handleCollapseUpdate(id: string, value: boolean) {
 <style scoped lang="scss">
 @import "../../../commons/commons.scss";
 
-
+/* ---------- Design tokens (inherit from the active VS Code theme) ---------- */
 .modern-app {
-  display: flex;
-  flex-direction: column;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  width: 100%;
-  height: 100vh;
-  min-height: 0;
-  font-family: var(--font-family);
-  font-size: var(--font-size);
-  font-weight: var(--font-weight);
-  transition: background-color 0.2s ease, color 0.2s ease;
+  --surface-base: var(--vscode-editor-background, #1e1e1e);
+  --surface-sidebar: var(--vscode-sideBar-background, var(--surface-base));
+  --surface-raised: var(--vscode-editorWidget-background, #252526);
+  --text-primary: var(--vscode-foreground, #e2e2e2);
+  --text-secondary: var(--vscode-descriptionForeground, #a8a8a8);
+  --accent: var(--vscode-button-background, #3b82f6);
+  --accent-contrast: var(--vscode-button-foreground, #ffffff);
+  --accent-hover: var(--vscode-button-hoverBackground, #2563eb);
+  --accent-text: var(--vscode-textLink-foreground, #60a5fa);
+  --focus-ring: var(--vscode-focusBorder, #3b82f6);
+  --input-bg: var(--vscode-input-background, #2a2a2a);
+  --font-ui: var(--vscode-font-family, system-ui, -apple-system, "Segoe UI", sans-serif);
+  --font-mono: var(--vscode-editor-font-family, ui-monospace, Consolas, monospace);
+  --warning: #e3a008;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --motion-fast: 140ms ease;
+  --motion-spring: 220ms cubic-bezier(0.34, 1.4, 0.64, 1);
+  --control-column: 200px;
+  --sidebar-width: 264px;
 }
 
 .modern-app.theme-dark {
-  --bg-primary: #1e1e1e;
-  --bg-secondary: #252526;
-  --bg-tertiary: #2d2d30;
-  --bg-hover: #3c3c3c;
-  --bg-selected: #37373d;
-  --border-color: #3c3c3c;
-  --text-primary: #e2e2e2;
-  --text-secondary: #bcbcbc;
-  --text-muted: #7a7a7a;
-  --accent-blue: #007acc;
-  --button-bg: #0e639c;
-  --button-hover: #1177bb;
-  --input-bg: #3c3c3c;
-  --input-border: #5a5a5a;
-  --input-focus: #3794ff;
-  --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  --font-size: 13px;
-  --font-weight: 400;
+  --text-muted: rgba(255, 255, 255, 0.42);
+  --surface-hover: rgba(255, 255, 255, 0.045);
+  --surface-sunken: rgba(0, 0, 0, 0.22);
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --input-border: rgba(255, 255, 255, 0.14);
+  --indent-guide: rgba(255, 255, 255, 0.07);
+  --control-off: rgba(255, 255, 255, 0.09);
+  --accent-soft: rgba(59, 130, 246, 0.18);
+  --warning-soft: rgba(227, 160, 8, 0.16);
+  --warning-text: #f0c14b;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --header-glass: rgba(20, 20, 22, 0.72);
 }
 
 .modern-app.theme-light {
-  --bg-primary: #f3f3f3;
-  --bg-secondary: #ffffff;
-  --bg-tertiary: #f8f8f8;
-  --bg-hover: #dbeafe;
-  --bg-selected: #cfe8ff;
-  --border-color: #c8c8c8;
-  --text-primary: #1f1f1f;
-  --text-secondary: #3a3a3a;
-  --text-muted: #6a6a6a;
-  --accent-blue: #0067c0;
-  --button-bg: #0067c0;
-  --button-hover: #0059a5;
-  --input-bg: #ffffff;
-  --input-border: #b5b5b5;
-  --input-focus: #0067c0;
-  --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  --font-size: 13px;
-  --font-weight: 400;
+  --text-muted: rgba(0, 0, 0, 0.45);
+  --surface-hover: rgba(0, 0, 0, 0.035);
+  --surface-sunken: rgba(0, 0, 0, 0.03);
+  --border-subtle: rgba(0, 0, 0, 0.07);
+  --border-strong: rgba(0, 0, 0, 0.15);
+  --input-border: rgba(0, 0, 0, 0.16);
+  --indent-guide: rgba(0, 0, 0, 0.07);
+  --control-off: rgba(0, 0, 0, 0.08);
+  --accent-soft: rgba(37, 99, 235, 0.12);
+  --warning-soft: rgba(227, 160, 8, 0.16);
+  --warning-text: #8a5a00;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  --header-glass: rgba(255, 255, 255, 0.78);
 }
 
-.modern-header {
+@supports (color: color-mix(in srgb, red, blue)) {
+  .modern-app.theme-dark,
+  .modern-app.theme-light {
+    --accent-soft: color-mix(in srgb, var(--accent) 18%, transparent);
+    --header-glass: color-mix(in srgb, var(--surface-base) 78%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modern-app {
+    --motion-fast: 0ms linear;
+    --motion-spring: 0ms linear;
+  }
+}
+
+/* ---------- Shell ---------- */
+.modern-app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  min-height: 0;
+  background-color: var(--surface-base);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app-header {
+  position: relative;
+  z-index: 10;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 20px;
   padding: 12px 20px;
-  background-color: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
-  gap: 16px;
+  background-color: var(--header-glass);
+  backdrop-filter: saturate(180%) blur(14px);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
-.header-left {
-  flex: 0 0 auto;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 0 1 auto;
+  max-width: calc(var(--sidebar-width) + 40px);
 }
 
-.header-title {
+.brand-mark {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 3px;
+  width: 32px;
+  height: 32px;
+  padding: 7px;
+  box-sizing: border-box;
+  border-radius: 9px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  box-shadow: 0 4px 14px var(--accent-soft), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.brand-mark span {
+  border-radius: 2px;
+  background-color: var(--accent-contrast);
+  opacity: 0.9;
+}
+
+.brand-mark span:nth-child(2),
+.brand-mark span:nth-child(3) {
+  opacity: 0.45;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.brand-title {
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.header-center {
+.brand-subtitle {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ---------- Search ---------- */
+.search-field {
+  position: relative;
   flex: 1;
   display: flex;
-  justify-content: center;
   align-items: center;
+  max-width: 520px;
+  margin: 0 auto;
 }
 
-.search-group {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  max-width: 420px;
+.search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-muted);
+  pointer-events: none;
 }
 
 .search-input {
-  flex: 1;
-  padding: 6px 12px;
+  width: 100%;
+  height: 34px;
+  padding: 0 110px 0 36px;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 999px;
   background-color: var(--input-bg);
-  border: 1px solid var(--input-border);
-  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--input-border);
   color: var(--text-primary);
+  font: inherit;
   outline: none;
-  transition: border-color 0.15s ease-in-out;
+  transition: box-shadow var(--motion-fast);
+}
+
+.search-input:hover {
+  box-shadow: inset 0 0 0 1px var(--border-strong);
 }
 
 .search-input:focus {
-  border-color: var(--input-focus);
+  box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-soft);
 }
 
 .search-input::placeholder {
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }
 
-.toolbar-divider {
-  width: 1px;
-  height: 26px;
-  background-color: var(--border-color);
-  flex-shrink: 0;
+.search-count {
+  position: absolute;
+  right: 38px;
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
-.toolbar-group {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.toolbar-button {
-  width: 28px;
-  height: 28px;
+.search-kbd {
+  position: absolute;
+  right: 10px;
+  min-width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: transparent;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  color: var(--text-primary);
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.search-clear {
+  position: absolute;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-.toolbar-button:hover,
-.toolbar-button:focus-visible {
-  background-color: var(--bg-hover);
-  border-color: var(--border-color);
+.search-clear:hover,
+.search-clear:focus-visible {
+  background-color: var(--surface-hover);
+  color: var(--text-primary);
 }
 
-.header-right {
+/* ---------- Buttons ---------- */
+.header-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
-.header-btn {
-  display: flex;
+.btn {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 14px;
-  background-color: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  color: var(--text-primary);
+  height: 32px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 550;
   cursor: pointer;
-  font-size: 12px;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition: background-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
 }
 
-.header-btn:hover {
-  background-color: var(--bg-hover);
+.btn:active {
+  transform: translateY(1px);
 }
 
-.header-btn.primary {
-  background-color: var(--button-bg);
-  border-color: var(--button-bg);
-  color: #ffffff;
+.btn:focus-visible,
+.icon-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
-.header-btn.primary:hover {
-  background-color: var(--button-hover);
+.btn-primary {
+  background-color: var(--accent);
+  color: var(--accent-contrast);
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
-.btn-icon {
-  font-size: 12px;
-  line-height: 12px;
+.btn-primary:hover {
+  background-color: var(--accent-hover);
 }
 
-.table-wrapper {
+.btn-secondary {
+  background-color: var(--surface-raised);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+.btn-secondary:hover {
+  background-color: var(--surface-hover);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.btn-ghost:hover {
+  background-color: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.load-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  overflow: hidden;
+}
+
+.load-bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-text));
+  transition: width 200ms ease;
+}
+
+/* ---------- Body ---------- */
+.app-body {
   flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+}
+
+.content {
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-primary);
+  min-width: 0;
   min-height: 0;
 }
 
-.table-header {
+.content-toolbar {
   display: flex;
-  background-color: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
-  position: sticky;
-  top: 0;
-  z-index: 5;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
-.table-header-cell {
-  padding: 8px 12px;
-  font-weight: 600;
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.breadcrumb-root {
+  color: var(--text-muted);
+}
+
+.breadcrumb-sep {
+  color: var(--border-strong);
+}
+
+.breadcrumb-current {
   color: var(--text-primary);
-  border-right: 1px solid var(--border-color);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.table-header-cell.property-col {
+.icon-group {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+
+.icon-btn {
+  width: 28px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color var(--motion-fast), color var(--motion-fast);
+}
+
+.icon-btn:hover {
+  background-color: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.content-scroll {
+  position: relative;
   flex: 1;
-}
-
-.table-header-cell.value-col {
-  flex: 2;
-  min-width: 180px;
-}
-
-.table-body {
-  flex: 1;
-  overflow-y: auto;
-  background-color: var(--bg-primary);
   min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.content-column {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 4px 8px 64px;
+}
+
+/* ---------- Empty state ---------- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 72px 16px;
+  text-align: center;
+}
+
+.empty-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background-color: var(--surface-sunken);
+  color: var(--text-muted);
+  font-size: 22px;
+}
+
+.empty-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.empty-hint {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .modern-app {
+    --sidebar-width: 220px;
+    --control-column: 160px;
+  }
+
+  .btn-label {
+    display: none;
+  }
+
+  .btn {
+    padding: 0 9px;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-body {
+    grid-template-columns: 1fr;
+  }
+
+  .app-sidebar,
+  .brand-subtitle,
+  .search-count {
+    display: none;
+  }
+
+  .app-header {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .search-field {
+    order: 3;
+    flex-basis: 100%;
+    max-width: none;
+  }
 }
 </style>

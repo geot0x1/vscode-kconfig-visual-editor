@@ -21,3 +21,11 @@ export interface DisplayRow {
   hidden: boolean;
   hasChildren: boolean;
 }
+
+export interface NavEntry {
+  id: string;
+  title: string;
+  level: number;
+  ancestors: string[];
+  hasChildren: boolean;
+}

@@ -5,7 +5,7 @@ import ModernTheme from "./modern";
 
 export type ThemeKey = "default" | "modern";
 
-export const defaultThemeKey: ThemeKey = "default";
+export const defaultThemeKey: ThemeKey = "modern";
 
 const themeRegistry: Record<ThemeKey, Component> = {
   default: DefaultTheme,
