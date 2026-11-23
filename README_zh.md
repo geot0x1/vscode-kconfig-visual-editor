@@ -4,13 +4,13 @@
 
 VSCode Kconfig 可视化编辑器，提供语法高亮、自动补全、验证和可视化菜单配置界面。
 
-![Kconfig Visual Editor](images/kconfig-visual-editor.png)
+![Kconfig Visual Editor](images/modern-ui-dark.png)
 
 支持 2 套 UI 风格，可通过 `kconfig.uiTheme` 设置切换：
 
 1. **现代风格**（默认）：左侧分类侧边栏 + 设置页式的配置项列表
 
-![modern](images/modern.png)
+![modern](images/modern-ui-light.png)
 
 2. **经典风格**：menuconfig 风格的树形导航（`"kconfig.uiTheme": "default"`）
 

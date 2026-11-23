@@ -4,13 +4,13 @@
 
 VSCode Kconfig visual editor with syntax highlighting, auto-completion, validation and menuconfig interface.
 
-![Kconfig Visual Editor](images/kconfig-visual-editor.png)
+![Kconfig Visual Editor](images/modern-ui-dark.png)
 
 Supports 2 UI styles, switchable with the `kconfig.uiTheme` setting:
 
 1. **Modern** (default): category sidebar plus a settings-style option list
 
-![modern](images/modern.png)
+![modern](images/modern-ui-light.png)
 
 2. **Classic**: menuconfig-style tree navigation (`"kconfig.uiTheme": "default"`)
 
