@@ -123,7 +123,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(menuconfigCommand);
     context.subscriptions.push(saveDefconfigCommand);
     context.subscriptions.push(openWorkspaceRootCommand);
-    context.subscriptions.push(register_launcher_view('kconfig.menuconfig.openWorkspaceRoot'));
+    context.subscriptions.push(register_launcher_view('kconfig.menuconfig.openWorkspaceRoot', context.workspaceState));
 
     // Initialize file watcher for sdkconfig files
     const fileWatcher = new FileWatcher(context);

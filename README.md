@@ -199,6 +199,9 @@ This extension contributes the following settings:
    - The modern UI is now the default (set `kconfig.uiTheme` to `default` for the classic UI)
    - Added the Kconfig activity bar view and the "Open Kconfig from Workspace Root" command
 
+6. 0.5.1:
+   - The Kconfig view no longer opens the editor (or warns about a missing root `Kconfig`) when VS Code restores it at startup; clicking the Kconfig icon still opens the editor right away
+
 ## Testing & Validation
 
 This extension has been thoroughly tested and validated with a wide range of real-world Kconfig files to ensure compatibility and stability. Complete test cases and example files can be found in the [test repository](./test-kconfig/README.md).

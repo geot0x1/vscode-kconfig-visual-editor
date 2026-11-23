@@ -201,6 +201,9 @@ VSCode Kconfig 可视化编辑器，提供语法高亮、自动补全、验证�
    - 现代 UI 成为默认界面（将 `kconfig.uiTheme` 设为 `default` 可使用经典界面）
    - 新增 Kconfig 活动栏视图和 "打开工作区根目录的 Kconfig" 命令
 
+6. 0.5.1:
+   - VS Code 启动时恢复 Kconfig 视图不再自动打开编辑器（也不再提示根目录缺少 `Kconfig`）；点击 Kconfig 图标仍会立即打开编辑器
+
 ## 测试与验证
 
 本扩展已通过大量实际 Kconfig 文件测试验证，确保兼容性和稳定性。完整的测试用例和示例文件请参见 [测试资源库](./test-kconfig/README_zh.md)。
