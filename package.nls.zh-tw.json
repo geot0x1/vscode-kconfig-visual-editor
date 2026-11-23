@@ -5,7 +5,6 @@
   "command.saveDefconfig": "儲存預設配置",
   "configuration.title": "Kconfig 視覺化編輯器",
   "config.enableValidation": "啟用/停用 Kconfig 檔案的語法驗證",
-  "config.autoHeaderPath": "生成的 C 標頭檔儲存路徑（預設：與 .config 檔案同目錄的 config.h）。支援絕對路徑或相對於 .config 所在目錄的路徑",
   "config.uiTheme": "選擇選單配置介面使用的 UI 主題",
   "config.uiTheme.default": "經典樹狀導覽介面",
   "config.uiTheme.modern": "帶分類側邊欄的現代佈局（預設）",

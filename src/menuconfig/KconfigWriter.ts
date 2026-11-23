@@ -13,10 +13,8 @@ export interface KconfigWriteOptions {
     menus: Menu[];
     assignments?: SymbolAssignment[];
     configOut?: string;
-    headerOut?: string;
     defconfigOut?: string;
     configHeader?: string;
-    headerHeader?: string;
     saveOld?: boolean;
 }
 
@@ -73,10 +71,6 @@ export class KconfigWriter {
             await this.writeConfigFile(options.configOut, options.menus, options.configHeader, options.saveOld !== false);
         }
 
-        if (options.headerOut) {
-            await this.writeHeaderFile(options.headerOut, options.menus, options.headerHeader);
-        }
-
         if (options.defconfigOut) {
             await this.writeDefconfigFile(options.defconfigOut, assignments, options.configHeader);
         }
@@ -96,22 +90,6 @@ export class KconfigWriter {
         }
 
         await this.writeFileIfChanged(filename, content, saveOld);
-    }
-
-    private async writeHeaderFile(filename: string, menus: Menu[], header?: string): Promise<void> {
-        const lines = this.generateHeaderLines(menus);
-        let content = header ? header : "";
-        if (lines.length > 0) {
-            if (content && !content.endsWith("\n")) {
-                content += "\n";
-            }
-            content += lines.join("\n");
-            if (!content.endsWith("\n")) {
-                content += "\n";
-            }
-        }
-
-        await this.writeFileIfChanged(filename, content, false);
     }
 
     private async writeDefconfigFile(filename: string, assignments: SymbolAssignment[], header?: string): Promise<void> {
@@ -383,31 +361,6 @@ export class KconfigWriter {
         return false;
     }
 
-    private generateHeaderLines(menus: Menu[]): string[] {
-        const lines: string[] = [];
-        const visited = new Set<string>();
-
-        const traverse = (items: Menu[]) => {
-            for (const item of items) {
-                if (item.name && !visited.has(item.name) && item.type !== menuType.menu && item.type !== menuType.choice) {
-                    visited.add(item.name);
-                    if (this.shouldSkipSymbol(item)) {
-                        continue;
-                    }
-                    const entry = this.formatHeaderLines(item);
-                    lines.push(...entry);
-                }
-
-                if (item.children && item.children.length > 0) {
-                    traverse(item.children);
-                }
-            }
-        };
-
-        traverse(menus);
-        return lines;
-    }
-
     private formatConfigLine(menu: Menu): string {
         const prefix = "CONFIG_" + menu.name;
 
@@ -434,38 +387,6 @@ export class KconfigWriter {
             }
             default:
                 return "";
-        }
-    }
-
-    private formatHeaderLines(menu: Menu): string[] {
-        const prefix = "CONFIG_" + menu.name;
-
-        switch (menu.type) {
-            case menuType.bool:
-            case menuType.tristate: {
-                const value = this.toTristate(menu.value);
-                if (value === "y") {
-                    return [`#define ${prefix} 1`];
-                }
-                if (value === "m") {
-                    return [`#define ${prefix}_MODULE 1`];
-                }
-                return [];
-            }
-            case menuType.int: {
-                const value = this.normalizeIntValue(menu);
-                return value === null ? [] : [`#define ${prefix} ${value}`];
-            }
-            case menuType.hex: {
-                const value = this.normalizeHexValue(menu);
-                return value ? [`#define ${prefix} ${value}`] : [];
-            }
-            case menuType.string: {
-                const value = this.normalizeStringValue(menu);
-                return value === null ? [] : [`#define ${prefix} "${this.escapeString(value)}"`];
-            }
-            default:
-                return [];
         }
     }
 

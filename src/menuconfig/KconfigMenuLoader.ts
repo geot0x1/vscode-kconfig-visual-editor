@@ -18,7 +18,6 @@ import { formatHelpText } from "./helpTextFormatter";
 import { Logger } from "../logger/logger";
 import { ensureRtThreadEnvironment } from "../rtthread/environment";
 import { KconfigParser } from "./KconfigParser";
-import { KconfigSessionCache } from "./KconfigSessionCache";
 
 export class KconfigMenuLoader {
   public static updateValues(
@@ -70,7 +69,7 @@ export class KconfigMenuLoader {
         Logger.info(`Parsing specific Kconfig file: ${targetPath}`);
         
         try {
-          const parsedMenus = await this.parseMenusWithCache(targetPath);
+          const parsedMenus = await this.parseMenus(targetPath);
           
           if (parsedMenus.length === 0) {
             Logger.warn("No menus parsed from target Kconfig file, using demo menus");
@@ -100,7 +99,7 @@ export class KconfigMenuLoader {
     const mainKconfigFile = kconfigFiles.find(f => path.basename(f) === "Kconfig") || kconfigFiles[0];
     
     try {
-      const parsedMenus = await this.parseMenusWithCache(mainKconfigFile);
+      const parsedMenus = await this.parseMenus(mainKconfigFile);
       
       if (parsedMenus.length === 0) {
         Logger.warn("No menus parsed from Kconfig files, using demo menus");
@@ -115,26 +114,12 @@ export class KconfigMenuLoader {
     }
   }
 
-  private async parseMenusWithCache(mainKconfigFile: string): Promise<Menu[]> {
-    const cache = new KconfigSessionCache(this.workspaceFolder.fsPath);
-    const cacheKey = KconfigSessionCache.buildCacheKey(mainKconfigFile);
-
-    const cachedMenus = await cache.load(cacheKey);
-    if (cachedMenus && cachedMenus.length > 0) {
-      Logger.info(() => `[SESSION_CACHE] Loaded ${cachedMenus.length} menus from cache: ${mainKconfigFile}`);
-      return cachedMenus;
-    }
-
+  private async parseMenus(mainKconfigFile: string): Promise<Menu[]> {
     const parser = new KconfigParser({
       workspaceFolder: this.workspaceFolder.fsPath,
       mainKconfigFile: mainKconfigFile
     });
-
-    const parsedMenus = await parser.parse();
-    if (parsedMenus.length > 0) {
-      await cache.save(cacheKey, parsedMenus, parser.getParsedFiles());
-    }
-    return parsedMenus;
+    return parser.parse();
   }
 
 

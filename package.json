@@ -129,12 +129,6 @@
           "default": true,
           "description": "%config.enableValidation%"
         },
-        "kconfig.autoHeaderPath": {
-          "scope": "resource",
-          "type": "string",
-          "default": "config.h",
-          "description": "%config.autoHeaderPath%"
-        },
         "kconfig.uiTheme": {
           "scope": "window",
           "type": "string",

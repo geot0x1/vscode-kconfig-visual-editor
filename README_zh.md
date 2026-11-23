@@ -134,7 +134,6 @@ VSCode Kconfig 可视化编辑器，提供语法高亮、自动补全、验证�
 本扩展提供以下设置选项：
 
 - `kconfig.enableValidation`: 启用/禁用 Kconfig 文件的语法验证（默认：`true`）
-- `kconfig.autoHeaderPath`: 生成的 C 头文件保存路径。支持绝对路径或相对于 .config 所在目录的路径（默认：`config.h`）
 - `kconfig.uiTheme`: 可视化编辑器的 UI 风格，`modern`（现代）或 `default`（经典）（默认：`modern`）
 - `kconfig.rtThread.pkgsDir`: 用于解析 RT-Thread 软件包的 `PKGS_DIR` 路径，可自动检测（默认：`~/.env/packages`）
 

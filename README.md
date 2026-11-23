@@ -133,7 +133,6 @@ All file types support:
 This extension contributes the following settings:
 
 - `kconfig.enableValidation`: Enable/disable syntax validation for Kconfig files (default: `true`)
-- `kconfig.autoHeaderPath`: Path to write the generated C header file. Supports absolute paths or paths relative to .config directory (default: `config.h`)
 - `kconfig.uiTheme`: UI style of the visual editor, `modern` or `default` (classic) (default: `modern`)
 - `kconfig.rtThread.pkgsDir`: RT-Thread `PKGS_DIR` path used to resolve packages; auto-detected when possible (default: `~/.env/packages`)
 

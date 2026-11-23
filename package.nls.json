@@ -5,7 +5,6 @@
   "command.saveDefconfig": "Save Default Configuration",
   "configuration.title": "Kconfig Visual Editor",
   "config.enableValidation": "Enable syntax validation for Kconfig files",
-  "config.autoHeaderPath": "Path to write the generated C header file (default: config.h in the same directory as .config). Supports absolute paths or paths relative to .config directory",
   "config.uiTheme": "Select the UI theme used by the menuconfig webview",
   "config.uiTheme.default": "Classic tree navigation interface",
   "config.uiTheme.modern": "Modern layout with category sidebar (default)",

@@ -9,7 +9,6 @@ import { runImplicitMenuExpressionCacheTests } from "./implicitMenuExpressionCac
 import { runLoadConfigNameIndexTests } from "./loadConfigNameIndex.test";
 import { runMenuTransferSerializerTests } from "./menuTransferSerializer.test";
 import { runConditionEvaluatorCacheTests } from "./conditionEvaluatorCache.test";
-import { runKconfigSessionCacheTests } from "./kconfigSessionCache.test";
 import { runStartupProfilerTests } from "./startupProfiler.test";
 import { runWebviewStoreInitialChunksTests } from "./webviewStoreInitialChunks.test";
 import { runCommentRenderingTests } from "./commentRendering.test";
@@ -29,7 +28,6 @@ async function main(): Promise<void> {
     await runLoadConfigNameIndexTests();
     await runMenuTransferSerializerTests();
     await runConditionEvaluatorCacheTests();
-    await runKconfigSessionCacheTests();
     await runStartupProfilerTests();
     await runWebviewStoreInitialChunksTests();
     await runCommentRenderingTests();

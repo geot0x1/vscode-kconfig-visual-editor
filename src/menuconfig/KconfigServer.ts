@@ -214,8 +214,6 @@ export class KconfigServer extends EventEmitter {
         try {
             const assignments: SymbolAssignment[] = this.kconfigWriter.collectAssignments(this.kconfigMenus);
 
-            const headerPath = await this.resolveHeaderPath();
-
             // 通知 FileWatcher 忽略内部写入导致的变更
             FileWatcher.getInstance()?.ignoreNextChange();
 
@@ -223,9 +221,7 @@ export class KconfigServer extends EventEmitter {
                 menus: this.kconfigMenus,
                 assignments,
                 configOut: this.configFile,
-                headerOut: headerPath || undefined,
                 configHeader: undefined,
-                headerHeader: headerPath ? this.getAutoHeader() : undefined,
                 saveOld: true,
             });
 
@@ -463,31 +459,10 @@ export class KconfigServer extends EventEmitter {
         return this.updateIndexedMenuValues(name, value);
     }
     
-    private async resolveHeaderPath(): Promise<string | null> {
-        const config = vscode.workspace.getConfiguration("kconfig");
-        let headerPath = config.get<string>("autoHeaderPath", "config.h")?.trim() || "";
-
-        if (!headerPath) {
-            return null;
-        }
-
-        if (!path.isAbsolute(headerPath)) {
-            const configDir = path.dirname(this.configFile);
-            headerPath = path.join(configDir, headerPath);
-        }
-
-        await fs.promises.mkdir(path.dirname(headerPath), { recursive: true });
-        return headerPath;
-    }
-
     private getConfigHeader(): string {
         return "#\n# Automatically generated file; DO NOT EDIT.\n#\n\n";
     }
 
-    private getAutoHeader(): string {
-        return "/*\n * Automatically generated file; DO NOT EDIT.\n */\n\n";
-    }
-    
     private saveDefaultValues(menus: Menu[]): void {
         // Logger.info("[SAVE_DEFAULTS] Starting to save default values");
         
@@ -527,14 +502,6 @@ export class KconfigServer extends EventEmitter {
         return dfs(this.kconfigMenus);
     }
     
-    /**
-     * Format a single config as a C #define statement
-     * (deprecated: retained for backward compatibility)
-     */
-    private formatHeaderLine(_: Menu, __: unknown): string {
-        return "";
-    }
-
     /**
      * Escapes string for .config file output, matching Kconfiglib behavior
      * Backslashes must be escaped before quotes to avoid double escaping
