@@ -202,6 +202,9 @@ This extension contributes the following settings:
 6. 0.5.1:
    - The Kconfig view no longer opens the editor (or warns about a missing root `Kconfig`) when VS Code restores it at startup; clicking the Kconfig icon still opens the editor right away
 
+7. 0.5.2:
+   - Fixed wildcard `source` / `rsource` / `osource` / `orsource` includes (for example `source "drivers/*/Kconfig"`) matching no files on Windows, which left those options missing from the editor
+
 ## Testing & Validation
 
 This extension has been thoroughly tested and validated with a wide range of real-world Kconfig files to ensure compatibility and stability. Complete test cases and example files can be found in the [test repository](./test-kconfig/README.md).

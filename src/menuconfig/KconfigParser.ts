@@ -1581,7 +1581,9 @@ export class KconfigParser {
         // 判断是否包含通配符
         if (hasMagic(sourcePath)) {
             try {
-                const files = this.deduplicateSourceFiles((await glob(resolvedPattern, { nodir: true }))
+                // path.join() yields backslash separators on Windows; without this option
+                // glob treats them as escape characters and matches nothing.
+                const files = this.deduplicateSourceFiles((await glob(resolvedPattern, { nodir: true, windowsPathsNoEscape: true }))
                     .map(file => path.normalize(file))
                     .sort((a, b) => a.localeCompare(b)));
                 
