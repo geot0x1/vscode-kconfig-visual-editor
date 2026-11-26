@@ -181,6 +181,8 @@ VSCode Kconfig 可视化编辑器，提供语法高亮、自动补全、验证�
 
    或运行 `scripts/reinstall.sh` 一步完成打包和安装。
 
+构建发布版本请运行 `scripts/release.sh`。脚本会显示版本号和警告信息，经确认后运行测试并打包生成 `.vsix` 文件。
+
 ## 版本更新记录
 
 1. 0.1.0 - 初始发布，支持基本 Kconfig 语法高亮和自动补全
@@ -199,11 +201,8 @@ VSCode Kconfig 可视化编辑器，提供语法高亮、自动补全、验证�
    - 重新设计现代 UI：分类侧边栏导航、设置页式配置项列表、`N / M / Y` tristate 按钮、内联帮助面板，配色跟随 VS Code 主题
    - 现代 UI 成为默认界面（将 `kconfig.uiTheme` 设为 `default` 可使用经典界面）
    - 新增 Kconfig 活动栏视图和 "打开工作区根目录的 Kconfig" 命令
-
-6. 0.5.1:
    - VS Code 启动时恢复 Kconfig 视图不再自动打开编辑器（也不再提示根目录缺少 `Kconfig`）；点击 Kconfig 图标仍会立即打开编辑器
-
-7. 0.5.2:
+   - 保存时现在只写入 `.config` 和 `.config.old`，与 Python menuconfig 一致；移除了自动生成的 `config.h` 头文件、`kconfig.autoHeaderPath` 设置和 `.kconfig-cache` 会话缓存
    - 修复 Windows 上带通配符的 `source` / `rsource` / `osource` / `orsource`（例如 `source "drivers/*/Kconfig"`）匹配不到任何文件、导致相关配置项缺失的问题
 
 ## 测试与验证

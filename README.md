@@ -179,6 +179,8 @@ This extension contributes the following settings:
 
    Or run `scripts/reinstall.sh` to package and install in one step.
 
+To build a release, run `scripts/release.sh`. It shows the version and any warnings, asks for confirmation, then runs the tests and packages the `.vsix` file.
+
 ## Release Notes
 
 1. 0.1.0 - Initial release with basic Kconfig syntax highlighting and auto-completion
@@ -197,11 +199,8 @@ This extension contributes the following settings:
    - Redesigned the modern UI: category sidebar navigation, settings-style option list, `N / M / Y` tristate buttons, inline help panel, and colors that follow the VS Code theme
    - The modern UI is now the default (set `kconfig.uiTheme` to `default` for the classic UI)
    - Added the Kconfig activity bar view and the "Open Kconfig from Workspace Root" command
-
-6. 0.5.1:
    - The Kconfig view no longer opens the editor (or warns about a missing root `Kconfig`) when VS Code restores it at startup; clicking the Kconfig icon still opens the editor right away
-
-7. 0.5.2:
+   - Saving now writes only `.config` and `.config.old`, as Python menuconfig does; the generated `config.h` header, the `kconfig.autoHeaderPath` setting and the `.kconfig-cache` session cache have been removed
    - Fixed wildcard `source` / `rsource` / `osource` / `orsource` includes (for example `source "drivers/*/Kconfig"`) matching no files on Windows, which left those options missing from the editor
 
 ## Testing & Validation
